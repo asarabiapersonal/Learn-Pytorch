@@ -103,7 +103,7 @@ net = Net()
 net = net.to(device)
 
 
-batch_size =  50
+batch_size =  5
 print(f"Batch size set: {batch_size}")
 
 full_dataset = ImageFolder(root="C:/Users/adams/OneDrive/Documents/AI/PetImages")
@@ -126,25 +126,18 @@ print("dataloaders constructed")
 dataiter = iter(trainloader)
 images, labels = next(dataiter)
 
-# Create a grid from the images and show them
 
-
-learning_rate=0.01
+learning_rate=0.001
 optimizer = optim.Adam(net.parameters(), lr = learning_rate)
 criterion = nn.NLLLoss()
 
-epochs = 10
+epochs = 1
 for epoch in range(epochs):
     running_loss = 0.0000
 
     for i, data in enumerate(trainloader):
         inputs, labels = data[0].to(device), data[1].to(device)
-        if i <= 3:
-            plt.figure(figsize=(12, 8)) # Create a new figure to display the images
-            img_grid = torchvision.utils.make_grid(inputs.cpu()) # Move to CPU for numpy/matplotlib
-            class_names = full_dataset.classes
-            imshow(img_grid, title=[class_names[x] for x in labels])
-            plt.show() # Use plt.show() to pause execution and see the plot
+
 
         optimizer.zero_grad()
         output = net(inputs)
@@ -170,8 +163,21 @@ validText = ""
 # again, iterate through test data
 with torch.no_grad():
     net.eval()
+    batch_counter = batch_size
     for data in testloader:
         images, labels = data[0].to(device), data[1].to(device)
+
+        if( batch_counter == 0 ):
+            plt.figure(figsize=(12, 8)) # Create a new figure to display the images
+            img_grid = torchvision.utils.make_grid(images.cpu()) # Move to CPU for numpy/matplotlib
+            class_names = full_dataset.classes
+            imshow(img_grid, title=[class_names[batch_counter] for batch_counter in labels])
+            plt.show() # Use plt.show() to pause execution and see the plot
+            batch_counter = batch_size
+        else:
+            batch_counter = batch_counter - 1
+        print (batch_counter)
+        
         outputs = net(images)
         _, predictions = torch.max(outputs, 1)
         
