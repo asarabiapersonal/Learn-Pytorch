@@ -80,8 +80,6 @@ class Net(nn.Module):
         self.conv2 = nn.Conv2d(64, 128, 3)
         self.pool2 = nn.MaxPool2d(2,stride=2)
         
-
-
         # Fully connected layers
         self.fc1 = nn.Linear(25088, 120)
         self.fc2 = nn.Linear(120, 84)
@@ -103,13 +101,12 @@ net = Net()
 net = net.to(device)
 
 
-batch_size =  5
+batch_size =  64
 print(f"Batch size set: {batch_size}")
 
 full_dataset = ImageFolder(root="C:/Users/adams/OneDrive/Documents/AI/PetImages")
 trainsize = int(4/5 * len(full_dataset))
 testsize = len(full_dataset) - trainsize
-
 
 trainset, testset = random_split(full_dataset, [trainsize, testsize])
 print("train test split done")
@@ -126,12 +123,25 @@ print("dataloaders constructed")
 dataiter = iter(trainloader)
 images, labels = next(dataiter)
 
-
 learning_rate=0.001
+batchTracker = []
+stepTracker = []
+
 optimizer = optim.Adam(net.parameters(), lr = learning_rate)
 criterion = nn.NLLLoss()
 
-epochs = 1
+# Add plots for displaying training loss data
+
+fig, axis =  plt.subplots(figsize=(10,5))
+line, = axis.plot(stepTracker,batchTracker)
+
+# Add titles and labels
+axis.set_title('Training Loss Over Time')
+axis.set_xlabel('Training Step')
+axis.set_ylabel('Loss')
+axis.grid(True)
+
+epochs = 2
 for epoch in range(epochs):
     running_loss = 0.0000
 
@@ -148,11 +158,33 @@ for epoch in range(epochs):
 
         # print statistics
         running_loss += loss.item()
-        if i % batch_size == (batch_size - 1):   
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / epochs:.3f}')
+        plot_every = batch_size  # Change to whatever interval you want to plot on the graph
+        if (i + 1) % plot_every == 0:
+            avg_loss = running_loss / plot_every
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {avg_loss:.3f}')
+
+            # 1. Append new data points
+            stepTracker.append(i + 1 + (epoch * len(trainloader))) # Continuous step count across epochs
+            batchTracker.append(avg_loss)
+            
+            # 2. Update the line object's data
+
             running_loss = 0.0
 
 print('Finished Training')
+
+line.set_xdata(stepTracker)
+line.set_ydata(batchTracker)
+
+# 3. Rescale the axes to fit the new data
+axis.relim()
+axis.autoscale_view()
+
+# 4. Redraw the plot
+fig.canvas.draw()
+fig.canvas.flush_events()
+plt.show()
+
 
 # prepare to count predictions for each class
 class_names = full_dataset.classes
@@ -168,15 +200,10 @@ with torch.no_grad():
         images, labels = data[0].to(device), data[1].to(device)
 
         if( batch_counter == 0 ):
-            plt.figure(figsize=(12, 8)) # Create a new figure to display the images
-            img_grid = torchvision.utils.make_grid(images.cpu()) # Move to CPU for numpy/matplotlib
-            class_names = full_dataset.classes
-            imshow(img_grid, title=[class_names[batch_counter] for batch_counter in labels])
-            plt.show() # Use plt.show() to pause execution and see the plot
             batch_counter = batch_size
         else:
             batch_counter = batch_counter - 1
-        print (batch_counter)
+        
         
         outputs = net(images)
         _, predictions = torch.max(outputs, 1)
@@ -188,6 +215,7 @@ with torch.no_grad():
                 validText = (" Correct Prediction ")
             else:
                 validText = (" Incorrect Prediction ")
+
             #print(validText + " Network Pred: " + str(prediction.item()) + " Actual Class: " + str(label.item()))
             total_pred[class_names[label]] += 1
 
